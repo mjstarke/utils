@@ -142,9 +142,10 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None):
     # Plotting skew-T
 
     # Use gridspec to more easily locate auxilliary axes.
-    gs = gridspec.GridSpec(10, 10)
-    fig = plt.figure(figsize=(13, 11))
-    skew = SkewT(fig, rotation=45, subplot=gs[:, :7])
+    fig = plt.figure(figsize=(11, 11))
+    ax_hodo = fig.add_axes([0.70, 0.675, 0.25, 0.25])
+    ax_thte = fig.add_axes([0.70, 0.375, 0.25, 0.25])
+    skew = SkewT(fig, rotation=45, rect=[0.05, 0.05, 0.60, 0.9])
 
     # Plot temperature, dewpoint, and wet-bulb.
     skew.plot(p, T, 'r')
@@ -202,24 +203,22 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None):
     # Theta-E plot
 
     # Set up axis for theta-e plot.
-    ax = fig.add_subplot(gs[3:6, -3:])
-    ax.plot(Te[mask_thetae], p[mask_thetae])
+    ax_thte.plot(Te[mask_thetae], p[mask_thetae])
 
-    ax.set_xlim(310, 360)
-    ax.set_ylim(1020, 100)
-    ax.set_yscale("log")
-    ax.set_yticks(np.arange(100, 1001, 100))
-    ax.set_yticklabels(np.arange(100, 1001, 100))
-    ax.grid(axis="both")
-    plt.text(0.5, 0.9, "Theta-E", ha="center", va="center", transform=ax.transAxes)
+    ax_thte.set_xlim(300, 360)
+    ax_thte.set_ylim(1020, 100)
+    ax_thte.set_yscale("log")
+    ax_thte.set_yticks(np.arange(100, 1001, 100))
+    ax_thte.set_yticklabels(np.arange(100, 1001, 100))
+    ax_thte.grid(axis="both")
+    plt.text(0.5, 0.9, "Theta-E", ha="center", va="center", transform=ax_thte.transAxes)
 
 
     ####################################################################################################################
     # Hodograph
 
     # Set up axis for hodograph.
-    ax = fig.add_subplot(gs[0:3, -3:])
-    h = Hodograph(ax)
+    h = Hodograph(ax_hodo)
     h.add_grid(20)
 
     # Plot each segment individually for control over color, reversed so that the full hodograph is plotted first,
@@ -229,12 +228,11 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None):
         mask = z < interval
         h.plot(u[mask], v[mask], c=color)
 
-    ax.set_xticks([])
-    ax.set_yticks([])
+    ax_hodo.set_xticks([])
+    ax_hodo.set_yticks([])
     for a in range(20, 81, 20):
         plt.text(-a*0.71, -a*0.71, a, ha="center", va="center")
 
-    plt.tight_layout()
     if save_to is None:
         plt.show()
     else:
