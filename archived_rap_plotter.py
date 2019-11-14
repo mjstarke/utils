@@ -205,6 +205,7 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None):
     ax = fig.add_subplot(gs[3:6, -3:])
     ax.plot(Te[mask_thetae], p[mask_thetae])
 
+    ax.set_xlim(310, 360)
     ax.set_ylim(1020, 100)
     ax.set_yscale("log")
     ax.set_yticks(np.arange(100, 1001, 100))
