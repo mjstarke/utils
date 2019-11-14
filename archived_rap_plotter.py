@@ -81,6 +81,11 @@ class Sounding:
     def v(self):
         return self.wind_components()[1]
 
+    def parcel_trace(self, index_from):
+        return mpcalc.parcel_profile(self["PRES"][index_from:] * units.hPa,
+                                     self["TMPC"][index_from] * units.degC,
+                                     self["DWPC"][index_from] * units.degC).to('degC')
+
 
 ########################################################################################################################
 # Download BUFKIT file.
@@ -153,16 +158,12 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None):
     skew.plot(p[mask_wetbulb], Tw[mask_wetbulb], color='#009999', linewidth=1)
 
     # Calculate and plot surface parcel trace.
-    sfc_trace = mpcalc.parcel_profile(p * units.hPa,
-                                      T[0] * units.degC,
-                                      Td[0] * units.degC).to('degC')
+    sfc_trace = snd.parcel_trace(0)
     sfc_trace_plot = skew.plot(p, sfc_trace, 'k', linewidth=2, zorder=-10)
 
     # Calculate and plot MU parcel trace.
     mu_level_index = np.argmax(Te[p > 750.])
-    mu_trace = mpcalc.parcel_profile(p[mu_level_index:] * units.hPa,
-                                     T[mu_level_index] * units.degC,
-                                     Td[mu_level_index] * units.degC).to('degC')
+    mu_trace = snd.parcel_trace(mu_level_index)
     mu_trace_plot = skew.plot(p[mu_level_index:], mu_trace, c='gray', linewidth=2, zorder=-9)
 
     # Plot each barb individually for control over color.  Unfortunately, the c arg of plot_barbs doesn't work for this
