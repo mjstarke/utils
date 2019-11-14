@@ -86,6 +86,40 @@ class Sounding:
                                      self["TMPC"][index_from] * units.degC,
                                      self["DWPC"][index_from] * units.degC).to('degC')
 
+    def cape_cin(self, index_from):
+        return mpcalc.cape_cin(self["PRES"][index_from:] * units.hPa,
+                               self["TMPC"][index_from] * units.degC,
+                               self["DWPC"][index_from] * units.degC,
+                               self.parcel_trace(index_from))
+
+    def lcl(self, index):
+        return mpcalc.lcl(self["PRES"][index] * units.hPa,
+                          self["TMPC"][index] * units.degC,
+                          self["DWPC"][index] * units.degC)
+
+    def bunkers_storm_motion(self):
+        return mpcalc.bunkers_storm_motion(self["PRES"] * units.hPa,
+                                           self.u * units.knot,
+                                           self.v * units.knot,
+                                           self["HGHT"] * units.meter)
+
+    def bulk_shear(self, depth=6000*units.meter):
+        return mpcalc.bulk_shear(self["PRES"] * units.hPa,
+                                 self.u * units.knot,
+                                 self.v * units.knot,
+                                 self["HGHT"] * units.meter,
+                                 depth)
+
+    def storm_relative_helicity(self):
+        sm_u, sm_v = self.bunkers_storm_motion()[2]
+        return mpcalc.storm_relative_helicity(self.u * units.knot,
+                                              self.v * units.knot,
+                                              self["HGHT"] * units.meter,
+                                              1000*units.meter,
+                                              0*units.meter,
+                                              sm_u,
+                                              sm_v)
+
 
 ########################################################################################################################
 # Download BUFKIT file.
