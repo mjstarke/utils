@@ -89,11 +89,12 @@ def download_rap_bufkit(sid: str, dt: datetime, check_existing: bool = True) -> 
     Downloads a RAP BUFKIT sounding from Iowa State's archive.
     :param sid: The ID of the sounding site.  See https://www.meteor.iastate.edu/~ckarsten/bufkit/data/
     :param dt: The datetime of the sounding.
+    :param check_existing: Whether or not to check that the file exists locally before downloading.
     :return: The name of the downloaded file.
     """
     remote = "http://mtarchive.geol.iastate.edu/" \
              "{0.year}/{0.month:0>2}/{0.day:0>2}/bufkit/{0.hour:0>2}/rap/rap_{1}.buf".format(dt, sid)
-    local = "rap_{1}-{0.year}-{0.month:0>2}-{0.day:0>2}-{0.hour:0>2}.buf".format(dt, sid)
+    local = "rap_{1}_{0.year}-{0.month:0>2}-{0.day:0>2}-{0.hour:0>2}.buf".format(dt, sid)
 
     if not (check_existing and exists(local)):
         with closing(urlopen(remote)) as r:
