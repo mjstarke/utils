@@ -6,6 +6,7 @@ from metpy.plots import SkewT, Hodograph
 from metpy.units import pandas_dataframe_to_unit_arrays, units
 import metpy.calc as mpcalc
 import numpy as np
+from typing import Optional
 # Packages involved in downloading:
 import shutil
 from urllib.request import urlopen
@@ -102,7 +103,7 @@ def download_rap_bufkit(sid: str, dt: datetime, check_existing: bool = True) -> 
     return local
 
 
-def plot_skewt(snd: Sounding):
+def plot_skewt(snd: Sounding, save_to: Optional[str] = None):
     ####################################################################################################################
     # Data extraction and masking
 
@@ -232,11 +233,11 @@ def plot_skewt(snd: Sounding):
         plt.text(-a*0.71, -a*0.71, a, ha="center", va="center")
 
     plt.tight_layout()
-    plt.show()
+    if save_to is None:
+        plt.show()
+    else:
+        plt.savefig(save_to)
+        plt.close()
 
 
 ########################################################################################################################
-
-filename = download_rap_bufkit("max", datetime(2019, 3, 3, 19))
-sounding_texts = open(filename, "r").read().split("STID = ")[1:]
-plot_skewt(Sounding(sounding_texts[0]))
