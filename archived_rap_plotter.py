@@ -14,11 +14,7 @@ from urllib.request import urlopen
 from contextlib import closing
 from os.path import exists
 
-# ureg = pint.UnitRegistry()
-# ureg.setup_matplotlib()
 
-
-bufkit_filename = "rap_max.buf"
 BARB_DENSITY = 2
 
 
