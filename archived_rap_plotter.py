@@ -6,12 +6,16 @@ from metpy.plots import SkewT, Hodograph
 from metpy.units import pandas_dataframe_to_unit_arrays, units
 import metpy.calc as mpcalc
 import numpy as np
+import pint
 from typing import Optional
 # Packages involved in downloading:
 import shutil
 from urllib.request import urlopen
 from contextlib import closing
 from os.path import exists
+
+# ureg = pint.UnitRegistry()
+# ureg.setup_matplotlib()
 
 
 bufkit_filename = "rap_max.buf"
@@ -41,7 +45,7 @@ class Sounding:
 
         levels = []
         for i in range(0, len(data), len(headers)):
-            raw_level = data[i:i+len(headers)]
+            raw_level = data[i:i + len(headers)]
             level = dict()
             for header, datum in zip(headers, raw_level):
                 level[header] = float(datum)
@@ -51,7 +55,7 @@ class Sounding:
 
         params = dict()
         for i in range(0, len(station), 3):
-            param, _, value = station[i:i+3]
+            param, _, value = station[i:i + 3]
             try:
                 params[param] = float(value)
             except ValueError:
@@ -71,7 +75,7 @@ class Sounding:
         drc = 270 - drc
         drc *= np.pi / 180.
 
-        return np.cos(drc) * mag, np.sin(drc) * mag
+        return np.cos(drc) * mag * units.knot, np.sin(drc) * mag * units.knot
 
     @property
     def u(self):
@@ -81,44 +85,74 @@ class Sounding:
     def v(self):
         return self.wind_components()[1]
 
+    @property
+    def p(self):
+        return self["PRES"] * units.hPa
+
+    @property
+    def T(self):
+        return self["TMPC"] * units.degC
+
+    @property
+    def Td(self):
+        return self["DWPC"] * units.degC
+
+    @property
+    def Tw(self):
+        return self["TMWC"] * units.degC
+
+    @property
+    def thetaE(self):
+        return self["THTE"] * units.kelvin
+
+    @property
+    def z(self):
+        return self["HGHT"] * units.meter
+
     def parcel_trace(self, index_from):
-        return mpcalc.parcel_profile(self["PRES"][index_from:] * units.hPa,
-                                     self["TMPC"][index_from] * units.degC,
-                                     self["DWPC"][index_from] * units.degC).to('degC')
+        return mpcalc.parcel_profile(self.p[index_from:],
+                                     self.T[index_from],
+                                     self.Td[index_from])
 
     def cape_cin(self, index_from):
-        return mpcalc.cape_cin(self["PRES"][index_from:] * units.hPa,
-                               self["TMPC"][index_from] * units.degC,
-                               self["DWPC"][index_from] * units.degC,
+        return mpcalc.cape_cin(self.p[index_from:],
+                               self.T[index_from],
+                               self.Td[index_from],
                                self.parcel_trace(index_from))
 
     def lcl(self, index):
-        return mpcalc.lcl(self["PRES"][index] * units.hPa,
-                          self["TMPC"][index] * units.degC,
-                          self["DWPC"][index] * units.degC)
+        return mpcalc.lcl(self.p[index],
+                          self.T[index],
+                          self.Td[index])
 
     def bunkers_storm_motion(self):
-        return mpcalc.bunkers_storm_motion(self["PRES"] * units.hPa,
-                                           self.u * units.knot,
-                                           self.v * units.knot,
-                                           self["HGHT"] * units.meter)
+        return mpcalc.bunkers_storm_motion(self.p,
+                                           self.u,
+                                           self.v,
+                                           self.z)
 
-    def bulk_shear(self, depth=6000*units.meter):
-        return mpcalc.bulk_shear(self["PRES"] * units.hPa,
-                                 self.u * units.knot,
-                                 self.v * units.knot,
-                                 self["HGHT"] * units.meter,
+    def bulk_shear(self, depth=6000 * units.meter):
+        return mpcalc.bulk_shear(self.p,
+                                 self.u,
+                                 self.v,
+                                 self.z,
                                  depth)
 
     def storm_relative_helicity(self):
         sm_u, sm_v = self.bunkers_storm_motion()[2]
-        return mpcalc.storm_relative_helicity(self.u * units.knot,
-                                              self.v * units.knot,
-                                              self["HGHT"] * units.meter,
-                                              1000*units.meter,
-                                              0*units.meter,
+        return mpcalc.storm_relative_helicity(self.u,
+                                              self.v,
+                                              self.z,
+                                              1000 * units.meter,
+                                              0 * units.meter,
                                               sm_u,
                                               sm_v)
+
+    def significant_tornado(self):
+        mpcalc.significant_tornado(self.cape_cin(0)[0],
+                                   self.lcl(0),
+                                   self.storm_relative_helicity(),
+                                   self.bulk_shear())
 
 
 ########################################################################################################################
@@ -148,20 +182,19 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None):
     # Data extraction and masking
 
     # Extract data from sounding.
-    p = snd["PRES"]
-    T = snd["TMPC"]
-    Td = snd["DWPC"]
-    Tw = snd["TMWC"]
-    Te = snd["THTE"]
-    z = snd["HGHT"]
+    p = snd.p
+    T = snd.T
+    Td = snd.Td
+    Tw = snd.Tw
+    Te = snd.thetaE
+    z = snd.z
     u, v = snd.wind_components()
 
     # Create masks to filter what data is plotted.
-    mask_dewpoint = Td > -9000.  # Plot only non-missing dewpoints.
-    mask_wetbulb = Tw > -9000.  # Plot only non-missing dewpoints.
-    mask_thetae = Te > 0.  # Plot only non-missing theta-es.
-    mask_barbs = p > 100.  # Plot only winds below 100mb.
-
+    mask_dewpoint = Td > -9000. * units.degC  # Plot only non-missing dewpoints.
+    mask_wetbulb = Tw > -9000. * units.degC  # Plot only non-missing dewpoints.
+    mask_thetae = Te > 0. * units.K  # Plot only non-missing theta-es.
+    mask_barbs = p > 100. * units.hPa  # Plot only winds below 100mb.
 
     ####################################################################################################################
     # Define intervals of height for coloring barbs and hodograph.
@@ -172,10 +205,9 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None):
 
     for item in z:
         for color, interval in zip(z_interval_colors, z_interval_levels):
-            if item <= interval:
+            if item <= interval*units.meter:
                 z_colors.append(color)
                 break
-
 
     ####################################################################################################################
     # Plotting skew-T
@@ -192,12 +224,12 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None):
     skew.plot(p[mask_wetbulb], Tw[mask_wetbulb], color='#009999', linewidth=1)
 
     # Calculate and plot surface parcel trace.
-    sfc_trace = snd.parcel_trace(0)
+    sfc_trace = snd.parcel_trace(0).to('degC')
     sfc_trace_plot = skew.plot(p, sfc_trace, 'k', linewidth=2, zorder=-10)
 
     # Calculate and plot MU parcel trace.
-    mu_level_index = np.argmax(Te[p > 750.])
-    mu_trace = snd.parcel_trace(mu_level_index)
+    mu_level_index = np.argmax(Te[p > 750.*units.hPa])
+    mu_trace = snd.parcel_trace(mu_level_index).to('degC')
     mu_trace_plot = skew.plot(p[mu_level_index:], mu_trace, c='gray', linewidth=2, zorder=-9)
 
     # Plot each barb individually for control over color.  Unfortunately, the c arg of plot_barbs doesn't work for this
@@ -207,7 +239,6 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None):
                               v[mask_barbs][::BARB_DENSITY],
                               np.array(z_colors)[mask_barbs][::BARB_DENSITY]):
         skew.plot_barbs(p_, u_, v_, y_clip_radius=0.03, barbcolor=c_)
-
 
     ####################################################################################################################
     # Tweaking
@@ -233,7 +264,6 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None):
     plt.title('RAP sounding at {}'.format(snd.params["STID"]), loc='left')
     plt.title('{:.0f}-hour forecast valid at {}'.format(snd.params["STIM"], snd.params["TIME"]), loc='right')
 
-
     ####################################################################################################################
     # Theta-E plot
 
@@ -243,11 +273,10 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None):
     ax_thte.set_xlim(300, 360)
     ax_thte.set_ylim(1020, 100)
     ax_thte.set_yscale("log")
-    ax_thte.set_yticks(np.arange(100, 1001, 100))
-    ax_thte.set_yticklabels(np.arange(100, 1001, 100))
+    ax_thte.set_yticks(np.arange(200, 1001, 100))
+    ax_thte.set_yticklabels(np.arange(200, 1001, 100))
     ax_thte.grid(axis="both")
     plt.text(0.5, 0.9, "Theta-E", ha="center", va="center", transform=ax_thte.transAxes)
-
 
     ####################################################################################################################
     # Hodograph
@@ -260,19 +289,18 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None):
     # followed by all but the last segment, etc.  Unfortunately, the plot_colormapped() function doesn't work for this
     # purpose.
     for color, interval in zip(reversed(z_interval_colors), reversed(z_interval_levels)):
-        mask = z < interval
-        h.plot(u[mask], v[mask], c=color)
+        mask = z < interval*units.meter
+        h.plot(u.magnitude[mask], v.magnitude[mask], c=color)
 
     ax_hodo.set_xticks([])
     ax_hodo.set_yticks([])
     for a in range(20, 81, 20):
-        plt.text(-a*0.71, -a*0.71, a, ha="center", va="center")
+        plt.text(-a * 0.71, -a * 0.71, a, ha="center", va="center")
 
     if save_to is None:
         plt.show()
     else:
         plt.savefig(save_to)
         plt.close()
-
 
 ########################################################################################################################
