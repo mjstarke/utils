@@ -173,7 +173,15 @@ def download_rap_bufkit(sid: str, dt: datetime, check_existing: bool = True) -> 
     return local
 
 
-def plot_skewt(snd: Sounding, save_to: Optional[str] = None):
+def plot_skewt(snd: Sounding, save_to: Optional[str] = None, p_top: int = 100):
+    """
+    Plots a skew-T from the given Sounding.
+    :param snd: The Sounding.
+    :param save_to: Where to save the figure.  Default None, which does not save the figure, and instead shows it.
+    :param p_top: Pressure at the top of the skew-T.  If you change this, Metpy might change the rotation of the
+    isotherms.  No known fix yet.
+    :return: None.
+    """
     ####################################################################################################################
     # Data extraction and masking
 
@@ -190,7 +198,7 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None):
     mask_dewpoint = Td > -9000. * units.degC  # Plot only non-missing dewpoints.
     mask_wetbulb = Tw > -9000. * units.degC  # Plot only non-missing dewpoints.
     mask_thetae = Te > 0. * units.K  # Plot only non-missing theta-es.
-    mask_barbs = p > 100. * units.hPa  # Plot only winds below 100mb.
+    mask_barbs = p > p_top * units.hPa  # Plot only winds below the top of the sounding.
 
     ####################################################################################################################
     # Define intervals of height for coloring barbs and hodograph.
@@ -208,7 +216,6 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None):
     ####################################################################################################################
     # Plotting skew-T
 
-    # Use gridspec to more easily locate auxilliary axes.
     fig = plt.figure(figsize=(11, 11))
     ax_hodo = fig.add_axes([0.70, 0.675, 0.25, 0.25])
     ax_thte = fig.add_axes([0.70, 0.375, 0.25, 0.25])
@@ -241,7 +248,7 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None):
 
     # Set some appropriate axes limits for x and y
     skew.ax.set_xlim(-30, 40)
-    skew.ax.set_ylim(1020, 100)
+    skew.ax.set_ylim(1020, p_top)
 
     # Add legend for the parcel traces.
     skew.ax.legend(handles=[
@@ -267,10 +274,10 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None):
     ax_thte.plot(Te[mask_thetae], p[mask_thetae])
 
     ax_thte.set_xlim(300, 360)
-    ax_thte.set_ylim(1020, 100)
+    ax_thte.set_ylim(1020, p_top)
     ax_thte.set_yscale("log")
-    ax_thte.set_yticks(np.arange(200, 1001, 100))
-    ax_thte.set_yticklabels(np.arange(200, 1001, 100))
+    ax_thte.set_yticks(np.arange(p_top, 1001, 100))
+    ax_thte.set_yticklabels(np.arange(p_top, 1001, 100))
     ax_thte.grid(axis="both")
     plt.text(0.5, 0.9, "Theta-E", ha="center", va="center", transform=ax_thte.transAxes)
 
