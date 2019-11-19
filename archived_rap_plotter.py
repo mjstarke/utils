@@ -209,7 +209,7 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None, p_top: int = 100):
     ####################################################################################################################
     # Define intervals of height for coloring barbs and hodograph.
     z_interval_levels = [1500, 3000, 6000, 9000, 12000, 99999]
-    z_interval_colors = ["red", "orange", "green", "blue", "purple", "black"]
+    z_interval_colors = ["red", "orange", "green", "blue", "purple", "grey"]
 
     z_colors = []
 
