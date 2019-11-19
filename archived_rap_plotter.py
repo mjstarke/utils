@@ -199,7 +199,7 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None, p_top: int = 100):
     Te = snd.thetaE
     z = snd.z
     cf = snd["CFRL"]
-    w = snd["OMEG"]
+    w = -snd["OMEG"]
     u, v = snd.wind_components()
 
     # Create masks to filter what data is plotted.
