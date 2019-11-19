@@ -316,3 +316,19 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None, p_top: int = 100):
         plt.close()
 
 ########################################################################################################################
+    parameter_names = [
+        "SB STP",
+        "0-1 SRH",
+        "SB CAPE",
+        "SB CIN"
+    ]
+    parameters = [
+        snd.significant_tornado()[0],
+        snd.storm_relative_helicity()[2],
+        snd.cape_cin(0)[0],
+        snd.cape_cin(0)[1]
+    ]
+
+    for name, value, i in zip(parameter_names, parameters, range(len(parameters))):
+        s = "{:15} {:10.3f}".format(name, value.magnitude)
+        fig.text(0.70, 0.32 - (0.02*i), s, ha="left", va="top", family="monospace")
