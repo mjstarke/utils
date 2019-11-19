@@ -106,6 +106,10 @@ class Sounding:
     def z(self):
         return self["HGHT"] * units.meter
 
+    @property
+    def omega(self):
+        return self["OMEG"] * units("microbar/second")
+
     def parcel_trace(self, index_from):
         return mpcalc.parcel_profile(self.p[index_from:],
                                      self.T[index_from],
@@ -199,8 +203,17 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None, p_top: int = 100):
     Te = snd.thetaE
     z = snd.z
     cf = snd["CFRL"]
-    w = -snd["OMEG"]
+    omega = snd.omega
     u, v = snd.wind_components()
+
+    e = 611.2 * units.Pa * np.exp((17.67 * snd.T.magnitude) / (243.5 + snd.T.magnitude))
+    rv = (0.622 * e / (p - e)).to_base_units()
+    Tv = T * (1 + 0.61 * rv)
+    Rd = 287.05 * units("J/K/kg")
+    g = 9.8 * units("m/s**2")
+    rho = (p / (Rd * T)).to_base_units()
+
+    w = (-omega / (rho * g)).to("cm/s")
 
     # Create masks to filter what data is plotted.
     mask_dewpoint = Td > -9000. * units.degC  # Plot only non-missing dewpoints.
@@ -253,12 +266,13 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None, p_top: int = 100):
 
     ####################################################################################################################
     # Cloud fraction and omega
-    cf_plot = cf / 1500
-    w_plot = (1 + w) / 15
+    zero_line = 1/15
+    cf_plot = (cf * zero_line) / 100
+    w_plot = (w.magnitude / 20) + zero_line
     skew.ax.plot(np.zeros(cf_plot.shape) + 1/15, snd.p, transform=skew.ax.get_yaxis_transform(), color="grey")
     skew.ax.plot(cf_plot, snd.p, transform=skew.ax.get_yaxis_transform(), color="black")
     skew.ax.plot(w_plot, snd.p, transform=skew.ax.get_yaxis_transform(), color="purple")
-    skew.ax.text(np.max(w_plot), snd.p[np.argmax(w_plot)], " {:.1f}".format(np.max(w)),
+    skew.ax.text(np.max(w_plot), snd.p[np.argmax(w_plot)], " {:.1f}".format(np.max(w.magnitude)),
                  color="purple", ha="left", va="center",
                  transform=skew.ax.get_yaxis_transform())
     # skew.ax.fill_betweenx(snd.p, cloud_fractions, np.zeros(cloud_fractions.shape))
@@ -275,7 +289,7 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None, p_top: int = 100):
         mlines.Line2D([], [], color='orange', label='Surface parcel'),
         mlines.Line2D([], [], color='gray', label=r"Max $\theta_e$ below 750mb"),
         mlines.Line2D([], [], color='black', label=r"Cloud fraction"),
-        mlines.Line2D([], [], color='purple', label=r"Negative omega"),
+        mlines.Line2D([], [], color='purple', label=r"Vertical velocity (cm/s)"),
     ], loc="upper center")
 
     # Add adiabats and isohumes.
@@ -350,4 +364,4 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None, p_top: int = 100):
 
     for name, value, i in zip(parameter_names, parameters, range(len(parameters))):
         s = "{:15} {:10.3f}".format(name, value.magnitude)
-        fig.text(0.70, 0.32 - (0.02*i), s, ha="left", va="top", family="monospace")
+        fig.text(0.70, 0.32 - (0.02*i), s, ha="left", va="top", family="monospace", transform=fig.transFigure)
