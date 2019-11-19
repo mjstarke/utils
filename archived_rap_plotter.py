@@ -206,14 +206,9 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None, p_top: int = 100):
     omega = snd.omega
     u, v = snd.wind_components()
 
-    e = 611.2 * units.Pa * np.exp((17.67 * snd.T.magnitude) / (243.5 + snd.T.magnitude))
-    rv = (0.622 * e / (p - e)).to_base_units()
-    Tv = T * (1 + 0.61 * rv)
-    Rd = 287.05 * units("J/K/kg")
-    g = 9.8 * units("m/s**2")
-    rho = (p / (Rd * T)).to_base_units()
-
-    w = (-omega / (rho * g)).to("cm/s")
+    e = mpcalc.saturation_vapor_pressure(T)
+    rv = mpcalc.mixing_ratio(e, p)
+    w = mpcalc.vertical_velocity(omega, p, T, rv).to("cm/s")
 
     # Create masks to filter what data is plotted.
     mask_dewpoint = Td > -9000. * units.degC  # Plot only non-missing dewpoints.
