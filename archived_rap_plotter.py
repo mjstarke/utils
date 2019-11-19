@@ -301,13 +301,16 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None, p_top: int = 100):
         mask = z < interval*units.meter
         h.plot(u.magnitude[mask], v.magnitude[mask], c=color)
 
+    for vector in snd.bunkers_storm_motion():
+        h.plot(vector[0], vector[1], c="black", markersize=3, marker="o")
+
     ax_hodo.set_xticks([])
     ax_hodo.set_yticks([])
     ax_hodo.set_xlim(-60, 100)
     ax_hodo.set_ylim(-60, 100)
     ax_hodo.set_xlabel("20kt increments")
-    for a in range(20, 81, 20):
-        plt.text(-a * 0.71, -a * 0.71, a, ha="center", va="center")
+    # for a in range(20, 81, 20):
+    #     plt.text(-a * 0.71, -a * 0.71, a, ha="center", va="center")
 
     if save_to is None:
         plt.show()
