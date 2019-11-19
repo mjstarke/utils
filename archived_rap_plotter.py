@@ -272,17 +272,20 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None, p_top: int = 100):
     skew.ax.plot(np.zeros(cf_plot.shape) + 1/15, snd.p, transform=skew.ax.get_yaxis_transform(), color="grey")
     skew.ax.plot(cf_plot, snd.p, transform=skew.ax.get_yaxis_transform(), color="black")
     skew.ax.plot(w_plot, snd.p, transform=skew.ax.get_yaxis_transform(), color="purple")
+
     skew.ax.text(np.max(w_plot), snd.p[np.argmax(w_plot)], " {:.1f}".format(np.max(w.magnitude)),
-                 color="purple", ha="left", va="center",
-                 transform=skew.ax.get_yaxis_transform())
+                 color="purple", ha="left", va="center", transform=skew.ax.get_yaxis_transform())
+    skew.ax.text(max(np.min(w_plot), 0), snd.p[np.argmin(w_plot)], " {:.1f}".format(np.min(w.magnitude)),
+                 color="purple", ha="left", va="center", transform=skew.ax.get_yaxis_transform())
     # skew.ax.fill_betweenx(snd.p, cloud_fractions, np.zeros(cloud_fractions.shape))
 
     ####################################################################################################################
     # Tweaking
 
-    # Set some appropriate axes limits for x and y
     skew.ax.set_xlim(-30, 40)
     skew.ax.set_ylim(1020, p_top)
+    skew.ax.set_xlabel("")
+    skew.ax.set_ylabel("")
 
     # Add legend for the parcel traces.
     skew.ax.legend(handles=[
@@ -297,7 +300,9 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None, p_top: int = 100):
                            alpha=0.25, color='orangered')
     skew.plot_moist_adiabats(t0=np.arange(233, 400, 5) * units.K,
                              alpha=0.25, color='tab:green')
-    skew.plot_mixing_lines(p=np.arange(1000, 99, -20) * units.hPa,
+    # Reshape required as a quirk of metpy.
+    skew.plot_mixing_lines(w=np.array([1, 2, 3, 4, 6, 8, 10, 12, 16, 20, 24, 28, 36]).reshape(-1, 1) / 1000.,
+                           p=np.arange(1000, 99, -100) * units.hPa,
                            linestyle='dotted', color='tab:blue')
 
     plt.title('RAP sounding at {}'.format(snd.params["STID"]), loc='left')
@@ -314,8 +319,9 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None, p_top: int = 100):
     ax_thte.set_yscale("log")
     ax_thte.set_yticks(np.arange(p_top, 1001, 100))
     ax_thte.set_yticklabels(np.arange(p_top, 1001, 100))
+    ax_thte.set_xlabel("")
     ax_thte.grid(axis="both")
-    plt.text(0.5, 0.9, "Theta-E", ha="center", va="center", transform=ax_thte.transAxes)
+    plt.text(0.5, 0.9, "Theta-E (Kelvins)", ha="center", va="center", transform=ax_thte.transAxes)
 
     ####################################################################################################################
     # Hodograph
@@ -338,15 +344,9 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None, p_top: int = 100):
     ax_hodo.set_yticks([])
     ax_hodo.set_xlim(-60, 100)
     ax_hodo.set_ylim(-60, 100)
-    ax_hodo.set_xlabel("20kt increments")
-    # for a in range(20, 81, 20):
-    #     plt.text(-a * 0.71, -a * 0.71, a, ha="center", va="center")
-
-    if save_to is None:
-        plt.show()
-    else:
-        plt.savefig(save_to)
-        plt.close()
+    plt.text(0.1, 0.9, "Velocity (knots)", ha="left", va="center", transform=ax_hodo.transAxes)
+    for a in range(20, 61, 20):
+        ax_hodo.text(-a * 0.71, -a * 0.71, a, ha="center", va="center")
 
 ########################################################################################################################
     parameter_names = [
@@ -365,3 +365,10 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None, p_top: int = 100):
     for name, value, i in zip(parameter_names, parameters, range(len(parameters))):
         s = "{:15} {:10.3f}".format(name, value.magnitude)
         fig.text(0.70, 0.32 - (0.02*i), s, ha="left", va="top", family="monospace", transform=fig.transFigure)
+
+########################################################################################################################
+    if save_to is None:
+        plt.show()
+    else:
+        plt.savefig(save_to)
+        plt.close()
