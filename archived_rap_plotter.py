@@ -5,6 +5,7 @@ import matplotlib.gridspec as gridspec
 from metpy.plots import SkewT, Hodograph
 from metpy.units import pandas_dataframe_to_unit_arrays, units
 import metpy.calc as mpcalc
+import metpy.interpolate as mpint
 import numpy as np
 import pint
 from typing import Optional
@@ -112,8 +113,8 @@ class Sounding:
 
     def cape_cin(self, index_from):
         return mpcalc.cape_cin(self.p[index_from:],
-                               self.T[index_from],
-                               self.Td[index_from],
+                               self.T[index_from:],
+                               self.Td[index_from:],
                                self.parcel_trace(index_from))
 
     def lcl(self, index):
@@ -127,12 +128,12 @@ class Sounding:
                                            self.v,
                                            self.z)
 
-    def bulk_shear(self, depth=6000 * units.meter):
+    def bulk_shear(self, depth=6 * units.kilometer):
         return mpcalc.bulk_shear(self.p,
                                  self.u,
                                  self.v,
                                  self.z,
-                                 depth)
+                                 depth=depth)
 
     def storm_relative_helicity(self):
         sm_u, sm_v = self.bunkers_storm_motion()[2]
@@ -145,10 +146,15 @@ class Sounding:
                                               sm_v)
 
     def significant_tornado(self):
-        mpcalc.significant_tornado(self.cape_cin(0)[0],
-                                   self.lcl(0),
-                                   self.storm_relative_helicity(),
-                                   self.bulk_shear())
+        u, v = self.bulk_shear()
+        return mpcalc.significant_tornado(self.cape_cin(0)[0],
+                                          mpint.log_interpolate_1d(
+                                              self.lcl(0)[0],
+                                              self.p,
+                                              self.z
+                                          ),
+                                          self.storm_relative_helicity()[2],
+                                          (u**2 + v**2)**0.5)
 
 
 ########################################################################################################################
