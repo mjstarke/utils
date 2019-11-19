@@ -198,6 +198,8 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None, p_top: int = 100):
     Tw = snd.Tw
     Te = snd.thetaE
     z = snd.z
+    cf = snd["CFRL"]
+    w = snd["OMEG"]
     u, v = snd.wind_components()
 
     # Create masks to filter what data is plotted.
@@ -234,7 +236,7 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None, p_top: int = 100):
 
     # Calculate and plot surface parcel trace.
     sfc_trace = snd.parcel_trace(0).to('degC')
-    sfc_trace_plot = skew.plot(p, sfc_trace, 'k', linewidth=2, zorder=-10)
+    sfc_trace_plot = skew.plot(p, sfc_trace, c='orange', linewidth=2, zorder=-10)
 
     # Calculate and plot MU parcel trace.
     mu_level_index = np.argmax(Te[p > 750.*units.hPa])
@@ -250,6 +252,18 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None, p_top: int = 100):
         skew.plot_barbs(p_, u_, v_, y_clip_radius=0.03, barbcolor=c_)
 
     ####################################################################################################################
+    # Cloud fraction and omega
+    cf_plot = cf / 1500
+    w_plot = (1 + w) / 15
+    skew.ax.plot(np.zeros(cf_plot.shape) + 1/15, snd.p, transform=skew.ax.get_yaxis_transform(), color="grey")
+    skew.ax.plot(cf_plot, snd.p, transform=skew.ax.get_yaxis_transform(), color="black")
+    skew.ax.plot(w_plot, snd.p, transform=skew.ax.get_yaxis_transform(), color="purple")
+    skew.ax.text(np.max(w_plot), snd.p[np.argmax(w_plot)], " {:.1f}".format(np.max(w)),
+                 color="purple", ha="left", va="center",
+                 transform=skew.ax.get_yaxis_transform())
+    # skew.ax.fill_betweenx(snd.p, cloud_fractions, np.zeros(cloud_fractions.shape))
+
+    ####################################################################################################################
     # Tweaking
 
     # Set some appropriate axes limits for x and y
@@ -258,8 +272,10 @@ def plot_skewt(snd: Sounding, save_to: Optional[str] = None, p_top: int = 100):
 
     # Add legend for the parcel traces.
     skew.ax.legend(handles=[
-        mlines.Line2D([], [], color='black', label='Surface parcel'),
-        mlines.Line2D([], [], color='gray', label=r"Max $\theta_e$ below 750mb")
+        mlines.Line2D([], [], color='orange', label='Surface parcel'),
+        mlines.Line2D([], [], color='gray', label=r"Max $\theta_e$ below 750mb"),
+        mlines.Line2D([], [], color='black', label=r"Cloud fraction"),
+        mlines.Line2D([], [], color='purple', label=r"Negative omega"),
     ], loc="upper center")
 
     # Add adiabats and isohumes.
