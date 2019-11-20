@@ -6,6 +6,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+BD = BARB_DENSITY = slice(None, None, 20)
+
+
 def add_states(axis, projection):
     """
     Adds state outlines to the axis.
@@ -20,15 +23,20 @@ def add_states(axis, projection):
 
 print("Opening GRB...")
 grbs = pygrib.open("hrrr.t20z.wrfprsf00.grib2")
-lats, lons = grbs.read(1)[0].latlons()
-dpt850, _, _ = grbs(shortName="dpt", level=850)[0].data()
-t850, _, _ = grbs(shortName="t", level=850)[0].data()
+lats, lons = grbs.read(1)[0].latlons()  # latlons from any arbitrary message
+dpt850 = grbs(shortName="dpt", level=750)[0].data()[0]
+t850 = grbs(shortName="t", level=750)[0].data()[0]
+u850 = grbs(shortName="u", level=750)[0].data()[0]
+v850 = grbs(shortName="v", level=750)[0].data()[0]
+w850 = grbs(shortName="w", level=750)[0].data()[0]
 grbs.close()
 
 fig = plt.figure()
 ax = fig.add_axes([0, 0, 1, 1], projection=ccrs.PlateCarree())
 ax.set_extent([-90, -82, 30, 36])
-ax.contourf(lons, lats, t850 - dpt850, transform=ccrs.PlateCarree(), levels=np.arange(0, 10, 0.2))
+ax.contourf(lons, lats, t850 - dpt850, transform=ccrs.PlateCarree(), levels=np.arange(0, 10.1, 1))
+ax.contour(lons, lats, w850, colors="black", transform=ccrs.PlateCarree(), levels=np.arange(0, 1.1, 0.1))
+ax.barbs(lons[BD, BD], lats[BD, BD], u850[BD, BD], v850[BD, BD], transform=ccrs.PlateCarree())
 ax.coastlines()
 add_states(ax, ccrs.PlateCarree())
 
